@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loopin - Loopy's Journal ✨</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --p-pink: #FFB8B8; --p-pink-light: #FFE4E4;
+            --p-green: #A8E6CF; --p-yellow: #FFEAA7;
+            --p-blue: #A8D8EA; --text: #5A5A5A; --white: #FFFFFF;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #FFF5F5 0%, #FFF9F0 100%);
+            color: var(--text); padding: 20px; min-height: 100vh;
+        }
+
+        .container { max-width: 450px; margin: 0 auto; }
+
+        .card {
+            background: var(--white); border-radius: 35px; padding: 25px;
+            margin-bottom: 20px; box-shadow: 0 10px 25px rgba(255, 184, 184, 0.2);
+            text-align: center; border: 2px solid var(--p-pink-light);
+        }
+
+        .level-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .level-tag { background: var(--p-pink); color: white; padding: 5px 15px; border-radius: 20px; font-weight: 800; font-size: 14px; }
+        
+        .pet-stage { font-size: 14px; font-weight: 700; color: var(--p-pink); margin-bottom: 10px; }
+        .pet-avatar-container { height: 160px; display: flex; align-items: center; justify-content: center; margin: 15px 0; }
+        
+        #petImage { 
+            width: 140px; height: 140px; object-fit: contain;
+            animation: loopyFloat 3s ease-in-out infinite; 
+        }
+
+        @keyframes loopyFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-12px) rotate(3deg); }
+        }
+
+        .xp-bar-bg { background: #f0f0f0; height: 12px; border-radius: 10px; overflow: hidden; }
+        .xp-bar-fill { background: linear-gradient(90deg, var(--p-pink), var(--p-yellow)); height: 100%; width: 0%; transition: width 0.8s ease; }
+
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .circle-box {
+            width: 110px; height: 110px; border-radius: 50%;
+            background: conic-gradient(var(--p-green) 0%, #F0F0F0 0%);
+            display: flex; align-items: center; justify-content: center; margin: 0 auto;
+            position: relative;
+        }
+        .circle-box::after { content: ""; position: absolute; width: 90px; height: 90px; background: white; border-radius: 50%; }
+        .circle-text { position: relative; z-index: 10; font-weight: 800; font-size: 18px; color: var(--p-green); }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 15px; }
+        .day-star { 
+            aspect-ratio: 1; background: #FFF9F9; border-radius: 12px; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; border: 1px solid #FFE4E4; transition: 0.3s;
+        }
+        .day-star.active { background: var(--p-yellow); border-color: #F0D78A; font-size: 16px; }
+
+        .btn-back {
+            display: block; width: fit-content; margin: 20px auto;
+            padding: 12px 30px; background: var(--p-pink); color: white;
+            border-radius: 25px; text-decoration: none; font-weight: 700;
+            box-shadow: 0 5px 15px rgba(255, 184, 184, 0.4);
+            transition: transform 0.2s;
+        }
+        .btn-back:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <div class="level-header">
+            <span style="font-weight: 800;" id="userName">Loopy Buddy 🍓</span>
+            <div class="level-tag">Lv. <span id="lblLevel">1</span></div>
+        </div>
+        <div class="pet-stage" id="lblStage">Stage: Baby Egg</div>
+        <div class="pet-avatar-container">
+            <img id="petImage" src="https://i.pinimg.com/originals/de/7c/4d/de7c4d577bc76d912440938634e235a9.png" alt="Loopy">
+        </div>
+        <div class="xp-bar-bg">
+            <div id="xpFill" class="xp-bar-fill"></div>
+        </div>
+        <p style="font-size: 12px; margin-top: 8px; color: #AAA;">Gain XP by completing habits!</p>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-bottom: 15px; font-size: 16px;">Today's Progress</h3>
+        <div class="stats-row">
+            <div class="circle-box" id="dailyCircle">
+                <span class="circle-text" id="lblPercent">0%</span>
+            </div>
+            <div style="text-align: left; display: flex; flex-direction: column; justify-content: center;">
+                <p id="lblHabitCount" style="font-weight: 700; font-size: 15px;">0/0 Habits</p>
+                <p style="font-size: 12px; color: #888;">Loopy is rooting for you! ✨</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-bottom: 10px; font-size: 16px;">Star Calendar ⭐</h3>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <a href="home.html" class="btn-back">Back to Home</a>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:3001/api';
+
+    async function initDashboard() {
+        const token = localStorage.getItem('loopin_token');
+        if (!token) window.location.href = 'login.html';
+
+        try {
+            // 1. Fetch Profile Data
+            const userRes = await fetch(`${API_URL}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const userData = await userRes.json();
+            const user = userData.data.user;
+
+            // Sync Header
+            document.getElementById('userName').innerText = `${user.username}'s Buddy 🍓`;
+            document.getElementById('lblLevel').innerText = user.level || 1;
+            
+            // Progress Bar Logic
+            const xpNeeded = (user.level || 1) * 100;
+            const xpPercent = Math.min(((user.xp || 0) / xpNeeded) * 100, 100);
+            document.getElementById('xpFill').style.width = xpPercent + '%';
+
+            // Pet Evolution Images
+            const petImg = document.getElementById('petImage');
+            const lblStage = document.getElementById('lblStage');
+            
+            if (user.level >= 20) {
+                petImg.src = 'https://i.pinimg.com/originals/94/37/10/9437108996b1a7d65609367d3839659b.png';
+                lblStage.innerText = "Stage: Grown-up Loopy";
+            } else if (user.level >= 10) {
+                petImg.src = 'https://i.pinimg.com/originals/9f/0b/4d/9f0b4d47c4e7f34f71092e9d28e7e60b.png';
+                lblStage.innerText = "Stage: Teenage Loopy";
+            } else if (user.level >= 3) {
+                petImg.src = 'https://i.pinimg.com/736x/8d/f3/7d/8df37d0c35471c2b5d40907297e55513.jpg';
+                lblStage.innerText = "Stage: Newborn Loopy";
+            }
+
+            // 2. Fetch Real Stats for Progress Circle
+            const statsRes = await fetch(`${API_URL}/habits/stats`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const statsData = await statsRes.json();
+            const stats = statsData.data.stats;
+
+            const deg = (stats.completionRate / 100) * 360;
+            document.getElementById('dailyCircle').style.background = `conic-gradient(var(--p-green) ${deg}deg, #F0F0F0 ${deg}deg)`;
+            document.getElementById('lblPercent').innerText = stats.completionRate + '%';
+            document.getElementById('lblHabitCount').innerText = `${stats.checkedInToday}/${stats.totalHabits} Habits`;
+
+            // 3. Render Calendar Stars based on Streak
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = ''; // Clear previous
+            
+            // Show 28 days of the moon/star cycle
+            for (let i = 1; i <= 28; i++) {
+                const day = document.createElement('div');
+                day.className = 'day-star';
+                
+                // If the user's current streak covers this day in the cycle
+                if (i <= stats.longestStreak % 29 && stats.longestStreak > 0) {
+                    day.classList.add('active');
+                    day.innerHTML = '⭐';
+                } else {
+                    day.innerText = i;
+                }
+                grid.appendChild(day);
+            }
+
+        } catch (err) {
+            console.error("Dashboard Sync Error:", err);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initDashboard);
+</script>
+</body>
+</html>

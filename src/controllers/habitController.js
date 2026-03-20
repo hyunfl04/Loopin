@@ -1,0 +1,293 @@
+const Habit = require('../models/Habit');
+
+
+// @desc    Get all habits for user
+// @route   GET /api/habits
+// @access  Private
+exports.getHabits = async (req, res) => {
+  try {
+    const habits = await Habit.find({ 
+      userId: req.user._id,
+      isActive: true 
+    }).sort({ createdAt: -1 });
+
+    // CẬP NHẬT QUAN TRỌNG: 
+    // Duyệt qua từng habit để kiểm tra và reset streak nếu người dùng bỏ lỡ ngày hôm qua
+    const habitsWithStatus = await Promise.all(habits.map(async (habit) => {
+      
+      // Gọi hàm reset streak (đảm bảo hàm này trong Habit.js có lệnh this.save())
+      await habit.resetStreakIfMissed(); 
+
+      return {
+        ...habit.toObject(),
+        isCheckedInToday: habit.hasCheckedInToday()
+      };
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: habits.length,
+      data: { habits: habitsWithStatus }
+    });
+  } catch (error) {
+    console.error('Get habits error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching habits',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Create new habit
+// @route   POST /api/habits
+// @access  Private
+exports.createHabit = async (req, res) => {
+  try {
+    const { name, goal, icon, color, reminderTime, motivation } = req.body;
+    const goalUnit = goal?.unit || 'times';
+    const goalValue = goal?.value || 1;
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a habit name'
+      });
+    }
+
+    const habit = await Habit.create({
+      userId: req.user._id,
+      name,
+      goal: { unit: goalUnit || 'times', value: goalValue || 1 },
+      icon: icon || '✨',
+      color: color || 'blue',
+      reminderTime,
+      motivation
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Habit created! 🎉',
+      data: { 
+        habit: {
+          ...habit.toObject(),
+          isCheckedInToday: habit.hasCheckedInToday()
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Create habit error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating habit',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get single habit
+// @route   GET /api/habits/:id
+// @access  Private
+exports.getHabit = async (req, res) => {
+  try {
+    // 1. Dùng findOne để lấy chính xác 1 đối tượng
+    const habit = await Habit.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+      isActive: true
+    });
+
+    // 2. Kiểm tra nếu không tìm thấy habit
+    if (!habit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habit not found'
+      });
+    }
+
+    // 3. Kích hoạt logic reset streak và lưu vào DB
+    await habit.resetStreakIfMissed();
+
+    // 4. Trả về dữ liệu đã cập nhật
+    res.status(200).json({
+      success: true,
+      data: { 
+        habit: {
+          ...habit.toObject(),
+          isCheckedInToday: habit.hasCheckedInToday()
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get habit error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching habit detail',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Update habit
+// @route   PUT /api/habits/:id
+// @access  Private
+exports.updateHabit = async (req, res) => {
+  try {
+    const { name, goal, icon, color, reminderTime, motivation } = req.body;
+
+    const habit = await Habit.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      { name, goal, icon, color, reminderTime, motivation },
+      { new: true, runValidators: true }
+    );
+
+    if (!habit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habit not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Habit updated! ✨',
+      data: { 
+        habit: {
+          ...habit.toObject(),
+          isCheckedInToday: habit.hasCheckedInToday()
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating habit',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Delete habit (hard delete)
+// @route   DELETE /api/habits/:id
+// @access  Private
+exports.deleteHabit = async (req, res) => {
+  try {
+    const habit = await Habit.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+
+    if (!habit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habit not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Habit deleted'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting habit',
+      error: error.message
+    });
+  }
+};
+// @desc    Check in to a habit
+// @route   POST /api/habits/:id/checkin
+// @access  Private
+exports.checkinHabit = async (req, res) => {
+  try {
+    const habit = await Habit.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+
+    if (!habit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habit not found'
+      });
+    }
+
+    const result = habit.checkin();
+    await habit.save();
+
+    if (result.alreadyCheckedIn) {
+      return res.status(200).json({
+        success: true,
+        message: 'Already checked in today! 👍',
+        data: { 
+          habit: {
+            ...habit.toObject(),
+            isCheckedInToday: true
+          },
+          alreadyCheckedIn: true
+        }
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: result.streak > 1 
+        ? `🔥 ${result.streak} day streak! Keep it up!` 
+        : 'Checked in! Great start! ✨',
+      data: { 
+        habit: {
+          ...habit.toObject(),
+          isCheckedInToday: true
+        },
+        streak: result.streak
+      }
+    });
+  } catch (error) {
+    console.error('Checkin error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error checking in',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get habit statistics
+// @route   GET /api/habits/stats
+// @access  Private
+exports.getStats = async (req, res) => {
+  try {
+    const habits = await Habit.find({ 
+      userId: req.user._id,
+      isActive: true 
+    });
+
+    const totalHabits = habits.length;
+    const checkedInToday = habits.filter(h => h.hasCheckedInToday()).length;
+    const totalStreak = habits.reduce((sum, h) => sum + h.streak, 0);
+    const longestStreak = habits.length > 0 
+      ? Math.max(...habits.map(h => h.streak)) 
+      : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        stats: {
+          totalHabits,
+          checkedInToday,
+          completionRate: totalHabits > 0 
+            ? Math.round((checkedInToday / totalHabits) * 100) 
+            : 0,
+          totalStreak,
+          longestStreak
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching stats',
+      error: error.message
+    });
+  }
+};
