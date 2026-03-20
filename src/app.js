@@ -48,3 +48,18 @@ mongoose.connect(process.env.MONGO_URI)
       console.log(`🚀 Server running on http://localhost:${PORT} (No DB)`);
     });
   });
+app.post('/api/test-notification', async (req, res) => {
+    const { subscription } = req.body;
+    const payload = JSON.stringify({
+        title: 'Loopin Test',
+        body: 'This notification appeared directly on your computer! 🚀'
+    });
+
+    try {
+        await webpush.sendNotification(subscription, payload);
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.error("Push error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});

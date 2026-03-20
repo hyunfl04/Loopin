@@ -204,7 +204,9 @@
         </section>
         <section class="habits-section">
             <div class="habits-header">
-                <h2 class="section-title"><span class="section-icon">📅</span> Today's Habits</h2>
+                <h2 class="section-title" id="goCalendar" style="cursor: pointer;">
+    <span class="section-icon">📅</span> Today's Habits
+</h2>
                 <span class="habits-count" id="habitsCount">0 habits</span>
             </div>
             <div class="habits-grid" id="habitsGrid">
@@ -381,47 +383,44 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 async function registerPush() {
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      showToast('Notifications are disabled');
-      return;
-    }
-
-    // 1. Fetch Public Key from the correct path
-    const resKey = await fetch('/api/users/vapid-public-key');
-    const { publicKey } = await resKey.json();
-
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey)
-    });
-
-    // 2. Safely get UserId from localStorage
-    const userRaw = localStorage.getItem('loopin_user');
-    if (!userRaw) return console.error("User not found in storage");
+    const registration = await navigator.serviceWorker.ready;
     
-    const userData = JSON.parse(userRaw);
-    const userId = userData._id || userData.id;
-
-    // 3. Send to Backend
-    const saveRes = await fetch('/api/users/save-subscription', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, subscription })
-    });
-
-    if (saveRes.ok) {
-      console.log('✅ Push notifications enabled!');
-      showToast('Notifications registered!');
-    } else {
-      const errorData = await saveRes.json();
-      console.error('❌ Failed to save subscription:', errorData.message);
+    // 1. Get any existing subscription
+    const existingSubscription = await registration.pushManager.getSubscription();
+    
+    // 2. Clear old subscription to avoid InvalidStateError
+    if (existingSubscription) {
+        await existingSubscription.unsubscribe();
+        console.log("Old subscription cleared.");
     }
-  } catch (err) {
-    console.error('❌ Error during push registration:', err);
-  }
+
+    // 3. Your VAPID Public Key from .env
+    const VAPID_PUBLIC_KEY = 'BIL7clGIC1HrW8wBzcaYDxagXXhl_xbfHuAs2vXMApefvK85iSaenZdjcncnCKUyXoFAPciM9vuXp6gnh3DPGvI';
+
+    try {
+        const newSubscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+        
+        console.log("✅ New Push Subscription successful:", newSubscription);
+
+        // 4. Send the new subscription to your server
+        // FIXED: Using 'newSubscription' instead of 'subscription'
+        await fetch('/api/users/save-subscription', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: localStorage.getItem('loopin_userId'),
+                subscription: newSubscription // FIXED: Changed from 'subscription' to 'newSubscription'
+            }),
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('loopin_token')}`
+            }
+        });
+    } catch (err) {
+        console.error("❌ Registration failed:", err);
+    }
 }
 async function updateEmail(userId, email) {
   try {
@@ -484,7 +483,7 @@ function syncUserUI() {
         if (nameEl) nameEl.textContent = userData.username;
         if (avatarEl && userData.avatar) avatarEl.textContent = userData.avatar;
 
-        // Cập nhật lời chào tiếng Anh (đã sửa ID)
+    
         if (greetingEl) {
             const hour = new Date().getHours();
             if (hour < 12) greetingEl.textContent = `Good morning, ${userData.username}! 🌅`;
@@ -506,6 +505,9 @@ window.onpageshow = function(event) {
 registerPush();
 loadHabits();
 
+document.getElementById('goCalendar').addEventListener('click', function() {
+    window.location.href = 'calendar.html';
+});
 </script>
 <div id="toast" class="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>

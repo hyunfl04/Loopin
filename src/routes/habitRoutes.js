@@ -8,10 +8,10 @@ const {
   checkinHabit,
   getStats 
 } = require('../controllers/habitController');
-const authMiddleware = require('../middleware/authMiddleware');
+const {protect} = require('../middleware/authMiddleware');
 
 // All routes require authentication
-router.use(authMiddleware);
+router.use(protect);
 
 // Stats route (must be before /:id routes)
 router.get('/stats', getStats);

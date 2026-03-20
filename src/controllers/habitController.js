@@ -1,4 +1,5 @@
 const Habit = require('../models/Habit');
+const User = require('../models/User');
 
 
 // @desc    Get all habits for user
@@ -213,7 +214,36 @@ exports.checkinHabit = async (req, res) => {
     }
 
     const result = habit.checkin();
-    await habit.save();
+   const todayStr = new Date().toISOString().split('T')[0];
+if (!result.alreadyCheckedIn) {
+    if (!habit.checkInDates) habit.checkInDates = [];
+    if (!habit.checkInDates.includes(todayStr)) {
+        habit.checkInDates.push(todayStr);
+    }
+}
+await habit.save();
+    let levelUp = false;
+let xpGained = 0;
+
+if (!result.alreadyCheckedIn) {
+    const user = await User.findById(req.user._id);
+    if (user) {
+        xpGained = 10; 
+        user.xp = (user.xp || 0) + xpGained;
+        const xpToLevelUp = (user.level || 1) * 100;
+
+        if (user.xp >= xpToLevelUp) {
+            user.level = (user.level || 1) + 1;
+            user.xp -= xpToLevelUp;
+            levelUp = true;
+            // Cập nhật giai đoạn thú cưng
+            if (user.level >= 20) user.petType = 'adult';
+            else if (user.level >= 10) user.petType = 'teen';
+            else if (user.level >= 3) user.petType = 'baby';
+        }
+        await user.save();
+    }
+}
 
     if (result.alreadyCheckedIn) {
       return res.status(200).json({
@@ -262,12 +292,25 @@ exports.getStats = async (req, res) => {
       isActive: true 
     });
 
+    // --- BỔ SUNG: Lấy danh sách các ngày đã check-in duy nhất ---
+    let allCheckInDates = [];
+    habits.forEach(h => {
+      // Giả sử Model Habit của bạn có mảng logs hoặc checkInDates lưu chuỗi "YYYY-MM-DD"
+      if (h.checkInDates && Array.isArray(h.checkInDates)) {
+        allCheckInDates = [...allCheckInDates, ...h.checkInDates];
+      }
+    });
+    // Loại bỏ các ngày trùng (nếu 1 ngày làm nhiều habits)
+    const uniqueDates = [...new Set(allCheckInDates)]; 
+
     const totalHabits = habits.length;
     const checkedInToday = habits.filter(h => h.hasCheckedInToday()).length;
     const totalStreak = habits.reduce((sum, h) => sum + h.streak, 0);
     const longestStreak = habits.length > 0 
       ? Math.max(...habits.map(h => h.streak)) 
       : 0;
+    
+    const user = await User.findById(req.user._id).select('xp level petType');
 
     res.status(200).json({
       success: true,
@@ -279,7 +322,13 @@ exports.getStats = async (req, res) => {
             ? Math.round((checkedInToday / totalHabits) * 100) 
             : 0,
           totalStreak,
-          longestStreak
+          longestStreak,
+          checkInDays: uniqueDates // <--- GỬI DỮ LIỆU NÀY VỀ FRONTEND
+        },
+        user: {
+          xp: user ? user.xp : 0,
+          level: user ? user.level : 1,
+          petType: user ? user.petType : 'egg'
         }
       }
     });

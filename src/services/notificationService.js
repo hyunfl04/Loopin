@@ -11,6 +11,7 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 );
 
+
 // Tối ưu hóa transporter (tái sử dụng thay vì tạo mới)
 const transporter = nodemailer.createTransport({
   service: 'gmail',

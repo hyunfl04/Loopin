@@ -8,10 +8,12 @@ self.addEventListener('push', event => {
     }
 
     const options = {
-        body: data.body,
+       body: data.body,
         icon: data.icon || '/images/logo.png',
         badge: '/images/logo.png',
-        data: data // Lưu lại để dùng khi click
+        vibrate: [100, 50, 100], // Vibration for mobile devices
+        requireInteraction: true, // CRITICAL: The notification stays until the user closes or clicks it
+        data: data.habitId ? { habitId: data.habitId } : {} // Gửi habitId nếu có để frontend xử lý reset streak
     };
 
     // Hiển thị thông báo

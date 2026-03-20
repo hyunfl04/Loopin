@@ -64,7 +64,10 @@ const HabitSchema = new mongoose.Schema({
     default: false 
   },
   reminderTime: { type: String },
-  motivation: { type: String }
+  motivation: { type: String },
+  checkInDates: [{
+    type: String
+  }]
 
 });
 
@@ -73,6 +76,7 @@ const HabitSchema = new mongoose.Schema({
 HabitSchema.methods.checkin = function() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
   
   const lastCheckinDate = this.lastCheckin ? new Date(this.lastCheckin) : null;
   if (lastCheckinDate) {
@@ -82,6 +86,9 @@ HabitSchema.methods.checkin = function() {
   // Check if already checked in today
   if (lastCheckinDate && lastCheckinDate.getTime() === today.getTime()) {
     return { alreadyCheckedIn: true, streak: this.streak };
+  }
+  if (!this.checkInDates.includes(todayStr)) {
+    this.checkInDates.push(todayStr);
   }
 
   // Check if streak continues (checked in yesterday)
