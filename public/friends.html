@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loopin - Find Friends</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Nunito', sans-serif; background: linear-gradient(135deg, #f8fffe 0%, #fff9f0 100%); min-height: 100vh; padding: 20px; }
+        
+        :root { 
+            --pastel-green: #A8E6CF; --pastel-green-dark: #7DC4A5; 
+            --pastel-blue: #A8D8EA; --pastel-blue-dark: #7BB8CC; 
+            --pastel-purple: #DDA0DD; --white: #FFFFFF; 
+            --soft-gray: #F5F5F5; --text-dark: #4A4A4A; --text-light: #7A7A7A; 
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        /* Navbar & Nav Menu */
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background: var(--white); border-radius: 20px; margin-bottom: 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .nav-menu { display: flex; gap: 15px; margin-bottom: 30px; }
+        .nav-item { flex: 1; background: var(--white); padding: 15px; border-radius: 20px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; color: var(--text-dark); box-shadow: 0 5px 20px rgba(0,0,0,0.05); transition: 0.3s; border: 2px solid transparent; }
+        .nav-item.active { border-color: var(--pastel-purple); background: #faf5ff; }
+
+        /* Sections */
+        .search-section { background: var(--white); border-radius: 30px; padding: 35px; margin-bottom: 35px; box-shadow: 0 10px 40px rgba(0,0,0,0.06); border: 3px solid var(--pastel-purple); }
+        .search-input { width: 100%; padding: 16px 22px; border: 3px solid var(--soft-gray); border-radius: 18px; font-size: 18px; font-family: 'Nunito', sans-serif; font-weight: 600; outline: none; transition: 0.3s; }
+        .search-input:focus { border-color: var(--pastel-purple); background: #fff; }
+
+        /* Results List */
+        .results-grid { display: grid; gap: 15px; margin-top: 25px; }
+        .user-card { background: #fff; padding: 20px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 5px 15px rgba(0,0,0,0.04); border-left: 5px solid var(--pastel-purple); animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .user-pic { width: 45px; height: 45px; background: var(--pastel-purple); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem; }
+        
+        .btn-add { background: var(--pastel-purple); color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-add:hover { filter: brightness(0.9); transform: scale(1.05); }
+
+        /* Streak Badge Styling */
+        .friend-streak {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff5eb;
+            padding: 8px 15px;
+            border-radius: 15px;
+            border: 2px solid #ffe0b3;
+            font-weight: 800;
+            color: #ff8c00;
+        }
+        .friend-streak.inactive {
+            background: #f5f5f5;
+            border-color: #e0e0e0;
+            color: #999;
+        }
+
+        .empty-msg { text-align: center; color: var(--text-light); padding: 40px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <h2 style="font-weight: 800; color: var(--text-dark);">Loopin Social</h2>
+            <a href="/home" style="text-decoration: none; color: var(--text-light); font-weight: 700;">Back to Dashboard</a>
+        </nav>
+
+        <div class="nav-menu">
+            <a href="/home" class="nav-item">🏠 Home</a>
+            <a href="/ranking" class="nav-item">🏆 Ranking</a>
+            <a href="/friends" class="nav-item active">👥 Friends</a>
+        </div>
+
+        <section id="incomingRequestsSection" class="search-section" style="border-color: var(--pastel-blue); display: none;">
+            <h2 style="margin-bottom: 15px; color: var(--text-dark);">💌 Friend Requests</h2>
+            <div id="requestsList" class="results-grid"></div>
+        </section>
+
+        <section class="search-section">
+            <h2 style="margin-bottom: 15px; color: var(--text-dark);">🔍 Find Loopers</h2>
+            <input type="text" id="searchInput" class="search-input" placeholder="Enter username...">
+            <div id="resultsGrid" class="results-grid">
+                <div class="empty-msg">Type a name to start searching!</div>
+            </div>
+        </section>
+
+        <section class="search-section" style="border-color: var(--pastel-green);">
+            <h2 style="margin-bottom: 15px; color: var(--text-dark);">🌱 My Friends</h2>
+            <div id="friendsList" class="results-grid">
+                <div class="empty-msg">Loading friends...</div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let sentRequestIds = [];
+        const token = localStorage.getItem('token') || localStorage.getItem('loopin_token');
+        if (!token) window.location.href = '/login';
+
+        const searchInput = document.getElementById('searchInput');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const friendsList = document.getElementById('friendsList');
+        const requestsList = document.getElementById('requestsList');
+        const incomingRequestsSection = document.getElementById('incomingRequestsSection');
+
+        // --- 1. SEARCH LOGIC ---
+        let timeout = null;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(timeout);
+            const query = e.target.value;
+            if (query.length < 1) {
+                resultsGrid.innerHTML = '<div class="empty-msg">Type a name to start searching!</div>';
+                return;
+            }
+            timeout = setTimeout(() => searchUsers(query), 300);
+        });
+
+        async function searchUsers(query, existingFriendIds = null) {
+            try {
+                let friendIds = existingFriendIds;
+                if (!friendIds) {
+                    const resFriends = await fetch('/api/friends/list', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const friendData = await resFriends.json();
+                    friendIds = friendData.success ? friendData.data.map(f => f._id) : [];
+                }
+
+                const res = await fetch(`/api/friends/search?username=${query}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await res.json();
+                if (result.success) renderSearchResults(result.data, friendIds);
+            } catch (err) {
+                console.error("Search failed", err);
+            }
+        }
+
+        function renderSearchResults(users) {
+    if (users.length === 0) {
+        resultsGrid.innerHTML = '<div class="empty-msg">No users found. 😕</div>';
+        return;
+    }
+
+    resultsGrid.innerHTML = users.map(user => {
+        let buttonHtml = '';
+
+        if (user.friendshipStatus === 'accepted') {
+            buttonHtml = `<button class="btn-friended" disabled style="background: #e0e0e0; color: #888; cursor: not-allowed; border:none; padding:10px 20px; border-radius:12px; font-weight:700;">Friends 🌱</button>`;
+        } else if (user.friendshipStatus === 'pending') {
+            if (user.isRequester) {
+                buttonHtml = `<button class="btn-sent" disabled style="background: var(--pastel-blue); color: white; cursor: not-allowed; border:none; padding:10px 20px; border-radius:12px; font-weight:700;">Request Sent</button>`;
+            } else {
+                buttonHtml = `<button class="btn-add" onclick="handleRequest('${user._id}', 'accept')">Accept Request</button>`;
+            }
+        } else {
+            buttonHtml = `<button class="btn-add" onclick="addFriend('${user._id}')">Add Friend</button>`;
+        }
+
+        return `
+            <div class="user-card">
+                <div class="user-info">
+                    <div class="user-pic">${user.username[0].toUpperCase()}</div>
+                    <span style="font-weight: 700;">${user.username}</span>
+                </div>
+                ${buttonHtml}
+            </div>
+        `;
+    }).join('');
+}
+        // --- 2. FRIEND REQUESTS ---
+        async function addFriend(recipientId) {
+            try {
+                const res = await fetch(`/api/friends/request/${recipientId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    sentRequestIds.push(recipientId);
+                    const query = searchInput.value;
+                    if (query) searchUsers(query);
+                } else {
+                    alert(result.message);
+                }
+            } catch (err) {
+                console.error("Failed to send request", err);
+            }
+        }
+
+        async function loadFriendRequests() {
+            try {
+                const res = await fetch('/api/friends/my-requests', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await res.json();
+
+                if (result.success && result.requests.length > 0) {
+                    incomingRequestsSection.style.display = 'block';
+                    requestsList.innerHTML = result.requests.map(req => `
+                        <div class="user-card" style="border-left-color: var(--pastel-blue)">
+                            <div class="user-info">
+                                <div class="user-pic" style="background: var(--pastel-blue)">${req.sender.username[0].toUpperCase()}</div>
+                                <span><b>${req.sender.username}</b> wants to be friends!</span>
+                            </div>
+                            <div>
+                                <button class="btn-add" onclick="handleRequest('${req.sender._id}', 'accept')">Accept</button>
+                                <button onclick="handleRequest('${req.sender._id}', 'reject')" style="background:none; border:none; cursor:pointer; font-size: 20px; margin-left:10px;">❌</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    incomingRequestsSection.style.display = 'none';
+                }
+            } catch (err) {
+                console.error("Load requests failed", err);
+            }
+        }
+
+        async function handleRequest(senderId, action) {
+            try {
+                const res = await fetch('/api/friends/handle-request', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token 
+                    },
+                    body: JSON.stringify({ senderId, action })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    loadFriendRequests(); 
+                    loadFriends();
+                }
+            } catch (err) {
+                console.error("Handle request failed", err);
+            }
+        }
+
+        // --- 3. FRIENDS LIST & STREAKS ---
+        async function loadFriends() {
+            try {
+                const res = await fetch('/api/friends/list', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await res.json();
+                const list = document.getElementById('friendsList');
+
+                if (result.success && result.data && result.data.length > 0) {
+                    list.innerHTML = result.data.map(friend => `
+                        <div class="user-card" style="border-left-color: var(--pastel-green)">
+                            <div class="user-info">
+                                <div class="user-pic" style="background: var(--pastel-green)">
+                                    ${friend.username ? friend.username[0].toUpperCase() : '?'}
+                                </div>
+                                <span style="font-weight: 700;">${friend.username}</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:15px;">
+                                <div class="friend-streak ${(friend.streak ?? 0) > 0 ? '' : 'inactive'}">
+                                    <span class="fire-icon">🤝🔥</span>
+                                    <span class="streak-count">${friend.streak ?? 0}</span>
+                                </div>
+                                <button class="btn-delete" onclick="unfriend('${friend._id}')" 
+                                        style="background:#ffb8b8; color:white; border:none; padding:8px 15px; border-radius:10px; cursor:pointer; font-weight:700;">
+                                    Unfriend
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div class="empty-msg">No friends yet. Go find some Loopers!</div>';
+                }
+            } catch (err) {
+                console.error("Failed to load friends", err);
+            }
+        }
+
+        async function unfriend(friendId) {
+            if (!confirm("Remove this friend? Shared streaks will be lost!")) return;
+            try {
+                const res = await fetch(`/api/friends/unfriend/${friendId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const result = await res.json();
+                if (result.success) loadFriends();
+            } catch (err) {
+                console.error("Unfriend failed", err);
+            }
+        }
+
+        loadFriendRequests();
+        loadFriends();
+    </script></body>
+</html>
