@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loopin - Build Habits That Stick!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #f8fffe 0%, #fff9f0 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        :root {
+            --pastel-green: #A8E6CF;
+            --pastel-green-dark: #7DC4A5;
+            --pastel-blue: #A8D8EA;
+            --pastel-blue-dark: #7BB8CC;
+            --pastel-yellow: #FFEAA7;
+            --pastel-pink: #FFB8B8;
+            --pastel-purple: #DDA0DD;
+            --white: #FFFFFF;
+            --text-dark: #4A4A4A;
+            --text-light: #7A7A7A;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .logo-icon {
+            width: 120px;
+            height: 120px;
+            border-radius: 40px;
+            object-fit: contain;
+            box-shadow: 0 15px 40px rgba(168, 230, 207, 0.5);
+            margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .app-title {
+            font-size: 64px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--pastel-green-dark) 0%, var(--pastel-blue-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+        }
+
+        .tagline {
+            font-size: 24px;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-bottom: 50px;
+        }
+
+        .features {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 50px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .feature-card {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 30px;
+            width: 200px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-card:nth-child(1) { border-top: 5px solid var(--pastel-green); }
+        .feature-card:nth-child(2) { border-top: 5px solid var(--pastel-blue); }
+        .feature-card:nth-child(3) { border-top: 5px solid var(--pastel-pink); }
+
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .feature-text {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 18px 50px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: 700;
+            font-family: 'Nunito', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--pastel-green) 0%, var(--pastel-green-dark) 100%);
+            color: #2D6A4F;
+            border: none;
+            box-shadow: 0 6px 0 var(--pastel-green-dark), 0 10px 20px rgba(168, 230, 207, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 var(--pastel-green-dark), 0 14px 25px rgba(168, 230, 207, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 var(--pastel-green-dark);
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--text-dark);
+            border: 3px solid var(--pastel-blue);
+            box-shadow: 0 6px 0 var(--pastel-blue-dark), 0 10px 20px rgba(168, 216, 234, 0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 var(--pastel-blue-dark), 0 14px 25px rgba(168, 216, 234, 0.4);
+        }
+
+        .btn-secondary:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 var(--pastel-blue-dark);
+        }
+
+        .mascots {
+            font-size: 50px;
+            margin-top: 50px;
+        }
+
+        @media (max-width: 600px) {
+            .app-title {
+                font-size: 42px;
+            }
+            .tagline {
+                font-size: 18px;
+            }
+            .features {
+                flex-direction: column;
+                align-items: center;
+            }
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="/images/logo.gif" alt="Loopin Logo" class="logo-icon">
+        <h1 class="app-title">Loopin</h1>
+        <p class="tagline">Stay in the Loop!</p>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3 class="feature-title">Track Daily</h3>
+                <p class="feature-text">Log your habits every day with one tap</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔥</div>
+                <h3 class="feature-title">Build Streaks</h3>
+                <p class="feature-text">Watch your consistency grow over time</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3 class="feature-title">Reach Goals</h3>
+                <p class="feature-text">Achieve your personal milestones</p>
+            </div>
+        </div>
+
+        <div class="cta-buttons">
+            <a href="/signup" class="btn btn-primary">Get Started</a>
+            <a href="/login" class="btn btn-secondary">I Have an Account</a>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is already logged in
+        const token = localStorage.getItem('loopin_token');
+        if (token) {
+            window.location.href = '/home';
+        }
+    </script>
+</body>
+</html>
